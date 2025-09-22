@@ -115,11 +115,12 @@ class NFD_Gemini_Client
     {
         $room_part = ['inlineData' => ['mimeType' => $room_mime, 'data' => $room_base64]];
         $reference_part = $reference_base64 && $reference_mime ? ['inlineData' => ['mimeType' => $reference_mime, 'data' => $reference_base64]] : null;
-        
-        $parts = [['text' => $prompt], $room_part];
+
+        $parts = [['text' => $prompt]];
         if ($reference_part) {
             $parts[] = $reference_part;
         }
+        $parts[] = $room_part; // Room image last to ensure output matches its dimensions
 
         if ($via_images_api) {
             return [
