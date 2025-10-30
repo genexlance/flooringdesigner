@@ -5,7 +5,7 @@ Source: consolidated from agents.md
 ## 1. Executive Summary
 
 ### Product Overview
-Nano-Floor Designer is a WordPress plugin that enables users to visualize flooring options in their own spaces using AI-powered image generation. Visitors upload photos of their rooms and instantly preview new flooring materials rendered by Google Gemini's nano-banana model.
+Nano-Floor Designer is a WordPress plugin that enables users to visualize flooring options in their own spaces using AI-powered image generation. Visitors upload photos of their rooms and instantly preview new flooring materials rendered by Google's Gemini 2.5 Flash Image model.
 
 ### Key Value Proposition
 - **Instant Visualization**: See how new flooring will look in the actual room.
@@ -45,10 +45,10 @@ Nano-Floor Designer is a WordPress plugin that enables users to visualize floori
 ## 4. Functional Requirements
 
 ### 4.1 Core Features
-- **Image Upload & Processing**: JPEG/PNG/WEBP (max 10MB), minimum 800x600px, optional reference image.
+- **Image Upload & Processing**: JPEG/PNG/WEBP (max 10MB), minimum 800x600px (longest side ≥ 800, shortest side ≥ 600), optional reference image.
 - **Flooring Presets**: WordPress custom post type containing pricing, specs, imagery, and metadata.
 - **Flooring Materials**: Admin-managed list of material types, dimensions, and optional styles that fuel the custom generator.
-- **AI Processing**: Server-side integration with Google Gemini nano-banana model, including fallback to the text+image endpoint.
+- **AI Processing**: Server-side integration with Google's Gemini 2.5 Flash Image model, including fallback to the text+image endpoint.
 - **Results & Sharing**: Before/after slider, download link, share button (Share API + clipboard), optional WordPress media persistence.
 
 ### 4.2 User Flow
@@ -74,7 +74,7 @@ Nano-Floor Designer is a WordPress plugin that enables users to visualize floori
 - **Backend**: WordPress Settings API, REST API, Transients API, Media Library
 - **Frontend**: Vanilla ES6, shortcode + Gutenberg block wrapper
 - **Styling**: Tailwind-inspired utility CSS delivered as a static stylesheet
-- **External Services**: Google Gemini nano-banana API
+- **External Services**: Google Gemini 2.5 Flash Image API
 
 ### 5.2 Hosting & Infrastructure
 - Any WordPress-compatible host (WP Engine, Kinsta, SiteGround, etc.)

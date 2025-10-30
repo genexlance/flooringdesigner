@@ -1,12 +1,12 @@
 # Nano-Floor Designer (WordPress Plugin)
 
-Nano-Floor Designer brings AI-powered flooring visualizations directly into WordPress. Upload a room image, choose a flooring preset (or craft a custom description), and let Google Gemini's nano-banana model generate a realistic preview. The plugin supports both shortcodes and a Gutenberg block so the experience can live anywhere on your site.
+Nano-Floor Designer brings AI-powered flooring visualizations directly into WordPress. Upload a room image, choose a flooring preset (or craft a custom description), and let Google's Gemini 2.5 Flash Image model generate a realistic preview. The plugin supports both shortcodes and a Gutenberg block so the experience can live anywhere on your site.
 
 ## Features
 - WordPress-native admin experience with a dedicated menu
 - Flooring Presets custom post type (title, description, pricing, specs, featured image)
 - Flooring Materials manager for defining per-material dimensions and optional styles
-- Settings page for Gemini credentials (defaults to gemini-1.5-pro-latest and gemini-1.5-flash-latest), rate limiting, and debug logging
+- Settings page for Gemini credentials (defaults to gemini-1.5-pro-latest and gemini-2.5-flash-image), rate limiting, and debug logging
 - REST API (`nano-floor/v1`) with nonce protection and per-user/IP throttling
 - Frontend app with upload validation, preset catalog, custom prompt workflow, before/after slider, and sharing tools
 

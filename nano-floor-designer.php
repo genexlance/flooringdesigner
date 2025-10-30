@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Nano-Floor Designer
- * Description: AI-powered flooring visualization directly inside WordPress using the Google Gemini nano-banana model.
+ * Description: AI-powered flooring visualization directly inside WordPress using Google's Gemini 2.5 Flash Image model.
  * Version: 0.1.0
  * Author: Genex Marketing Agency Ltd.
  * License: GPL-2.0-or-later

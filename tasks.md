@@ -23,7 +23,7 @@ Legend: [ ] pending, [x] complete, [~] in progress
 ## Phase 3: REST API & Processing
 - [x] Create REST controller for uploads, processing, and preset retrieval
 - [x] Implement secure media handling (validation, temp storage, cleanup)
-- [x] Integrate Gemini nano-banana API call via wp_remote_post with error handling
+- [x] Integrate Gemini 2.5 Flash Image API call via wp_remote_post with error handling
 - [x] Support optional floor reference images and custom prompts
 - [x] Implement rate limiting / throttling per user/IP
 

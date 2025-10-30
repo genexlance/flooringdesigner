@@ -24,7 +24,10 @@ class NFD_Gemini_Client
             return ['error' => __('Gemini API key missing. Add it under Settings.', 'nano-floor-designer')];
         }
 
-        $model_id = $this->settings->get('gemini_image_model', 'gemini-2.5-flash-image-preview');
+        $model_id = $this->settings->get('gemini_image_model', 'gemini-2.5-flash-image');
+        if (in_array($model_id, ['gemini-2.0-flash-preview', 'gemini-2.5-flash-image-preview'], true)) {
+            $model_id = 'gemini-2.5-flash-image';
+        }
         if (!$model_id) {
             return ['error' => __('Gemini Image Model is not configured in settings.', 'nano-floor-designer')];
         }

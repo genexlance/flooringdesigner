@@ -36,7 +36,7 @@ class NFD_Settings
             'nfd_api_section',
             esc_html__('Google Gemini Integration', 'nano-floor-designer'),
             function () {
-                echo '<p>' . esc_html__('Configure the Google Gemini nano-banana credentials used for floor rendering.', 'nano-floor-designer') . '</p>';
+                echo '<p>' . esc_html__('Configure the Google Gemini image generation credentials used for floor rendering.', 'nano-floor-designer') . '</p>';
             },
             'nfd-settings'
         );
@@ -44,7 +44,7 @@ class NFD_Settings
         $fields = [
             'gemini_api_key' => ['label' => esc_html__('API Key', 'nano-floor-designer'), 'type' => 'password'],
             'gemini_model' => ['label' => esc_html__('Primary Model', 'nano-floor-designer'), 'type' => 'text', 'placeholder' => 'gemini-1.5-pro-latest'],
-            'gemini_image_model' => ['label' => esc_html__('Images API Model', 'nano-floor-designer'), 'type' => 'text', 'placeholder' => 'gemini-2.5-flash-image-preview'],
+            'gemini_image_model' => ['label' => esc_html__('Images API Model', 'nano-floor-designer'), 'type' => 'text', 'placeholder' => 'gemini-2.5-flash-image'],
             'use_images_api' => ['label' => esc_html__('Prefer Images API (faster previews)', 'nano-floor-designer'), 'type' => 'checkbox'],
             'rate_limit_rpm' => ['label' => esc_html__('Rate Limit (requests per minute)', 'nano-floor-designer'), 'type' => 'number', 'min' => 1, 'max' => 60],
         ];
@@ -184,7 +184,7 @@ class NFD_Settings
         return [
             'gemini_api_key' => '',
             'gemini_model' => 'gemini-1.5-pro-latest',
-            'gemini_image_model' => 'gemini-2.5-flash-image-preview',
+            'gemini_image_model' => 'gemini-2.5-flash-image',
             'use_images_api' => true,
             'rate_limit_rpm' => 10,
             'enable_debug_logging' => false,

@@ -165,27 +165,63 @@
           customDimensionMode: material ? (material.dimensions || []).length === 0 : false,
           style: ''
         }, { skipPresets: true });
+
+        // Update dimension select
+        if (elements.dimensionSelect) {
+          elements.dimensionSelect.innerHTML = '';
+          elements.dimensionSelect.appendChild(createEl('option', { value: '' }, 'Select dimensions'));
+          if (material && material.dimensions.length > 0) {
+            material.dimensions.forEach(dimension => elements.dimensionSelect.appendChild(createEl('option', { value: dimension }, dimension)));
+            elements.dimensionSelect.appendChild(createEl('option', { value: '__custom__' }, 'Custom size...'));
+            elements.dimensionSelect.parentElement.parentElement.style.display = 'block'; // Show dimension section
+          } else {
+            elements.dimensionSelect.parentElement.parentElement.style.display = 'none'; // Hide dimension section
+          }
+          elements.dimensionSelect.value = state.custom.customDimensionMode ? '__custom__' : state.custom.dimension;
+        }
+
+        // Update style select
+        if (elements.styleSelect) {
+          elements.styleSelect.innerHTML = '';
+          elements.styleSelect.appendChild(createEl('option', { value: '' }, 'Select style'));
+          if (material && material.styles.length > 0) {
+            material.styles.forEach(style => elements.styleSelect.appendChild(createEl('option', { value: style }, style)));
+            elements.styleSelect.parentElement.parentElement.style.display = 'block'; // Show style section
+          } else {
+            elements.styleSelect.parentElement.parentElement.style.display = 'none'; // Hide style section
+          }
+          elements.styleSelect.value = state.custom.style;
+        }
+
+        // Update custom dimension visibility
+        if (elements.dimensionCustomWrapper) {
+          const hasDimensions = material && material.dimensions.length > 0;
+          const customDimensionVisible = !hasDimensions || state.custom.customDimensionMode;
+          elements.dimensionCustomWrapper.style.display = customDimensionVisible ? 'block' : 'none';
+        }
       });
       const materialSection = buildField('Material type (optional)', materialSelect);
-      const hasDimensions = selectedMaterial && selectedMaterial.dimensions.length > 0;
-      let dimensionSelect;
-      if (hasDimensions) {
-        dimensionSelect = createEl('select', { class: 'nfd-input' });
-        dimensionSelect.appendChild(createEl('option', { value: '' }, 'Select dimensions'));
+      // Always create dimension select
+      const dimensionSelect = createEl('select', { class: 'nfd-input' });
+      dimensionSelect.appendChild(createEl('option', { value: '' }, 'Select dimensions'));
+      if (selectedMaterial && selectedMaterial.dimensions.length > 0) {
         selectedMaterial.dimensions.forEach(dimension => dimensionSelect.appendChild(createEl('option', { value: dimension }, dimension)));
         dimensionSelect.appendChild(createEl('option', { value: '__custom__' }, 'Custom size...'));
-        dimensionSelect.value = state.custom.customDimensionMode ? '__custom__' : state.custom.dimension;
-        dimensionSelect.addEventListener('change', event => {
-          const value = event.target.value;
-          if (value === '__custom__') {
-            updateCustom({ dimension: '', customDimensionMode: true, customDimension: state.custom.customDimension }, { skipPresets: true });
-          } else if (value === '') {
-            updateCustom({ dimension: '', customDimensionMode: false, customDimension: '' }, { skipPresets: true });
-          } else {
-            updateCustom({ dimension: value, customDimensionMode: false, customDimension: '' }, { skipPresets: true });
-          }
-        });
       }
+      dimensionSelect.value = state.custom.customDimensionMode ? '__custom__' : state.custom.dimension;
+      dimensionSelect.addEventListener('change', event => {
+        const value = event.target.value;
+        if (value === '__custom__') {
+          updateCustom({ dimension: '', customDimensionMode: true, customDimension: state.custom.customDimension }, { skipPresets: true });
+        } else if (value === '') {
+          updateCustom({ dimension: '', customDimensionMode: false, customDimension: '' }, { skipPresets: true });
+        } else {
+          updateCustom({ dimension: value, customDimensionMode: false, customDimension: '' }, { skipPresets: true });
+        }
+      });
+      elements.dimensionSelect = dimensionSelect;
+
+      const hasDimensions = selectedMaterial && selectedMaterial.dimensions.length > 0;
       const customDimensionVisible = !hasDimensions || state.custom.customDimensionMode;
       const dimensionPlaceholder = hasDimensions ? 'Enter custom size (e.g., 6 in x 48 in)' : 'Enter dimensions (e.g., 6 in x 48 in)';
       const dimensionCustomInput = createEl('input', { class: 'nfd-input', placeholder: dimensionPlaceholder, value: state.custom.customDimension });
@@ -194,19 +230,23 @@
       if (hasDimensions) {
         dimensionCustomWrapper.appendChild(createEl('span', { class: 'nfd-hint' }, 'Choose "Custom size..." to type your own.'));
       }
-      const dimensionChildren = [];
-      if (dimensionSelect) dimensionChildren.push(dimensionSelect);
-      dimensionChildren.push(dimensionCustomWrapper);
+      elements.dimensionCustomWrapper = dimensionCustomWrapper;
+
+      const dimensionChildren = [dimensionSelect, dimensionCustomWrapper];
       const dimensionSection = buildField('Dimensions (optional)', dimensionChildren);
-      let styleSection = null;
+      dimensionSection.style.display = hasDimensions ? 'block' : 'none'; // Initially hide if no dimensions
+      // Always create style select
+      const styleSelect = createEl('select', { class: 'nfd-input' });
+      styleSelect.appendChild(createEl('option', { value: '' }, 'Select style'));
       if (selectedMaterial && selectedMaterial.styles.length > 0) {
-        const styleSelect = createEl('select', { class: 'nfd-input' });
-        styleSelect.appendChild(createEl('option', { value: '' }, 'Select style'));
         selectedMaterial.styles.forEach(style => styleSelect.appendChild(createEl('option', { value: style }, style)));
-        styleSelect.value = state.custom.style;
-        styleSelect.addEventListener('change', event => updateCustom({ style: event.target.value }, { skipPresets: true }));
-        styleSection = buildField('Style', styleSelect);
       }
+      styleSelect.value = state.custom.style;
+      styleSelect.addEventListener('change', event => updateCustom({ style: event.target.value }, { skipPresets: true }));
+      elements.styleSelect = styleSelect;
+
+      const styleSection = buildField('Style', styleSelect);
+      styleSection.style.display = (selectedMaterial && selectedMaterial.styles.length > 0) ? 'block' : 'none'; // Initially hide if no styles
       const promptInput = createEl('textarea', { class: 'nfd-input', rows: 4, placeholder: 'Describe the flooring look (max 240 characters)', value: state.custom.prompt });
       promptInput.maxLength = 240;
       promptInput.addEventListener('input', event => { updateCustom({ prompt: event.target.value }, { skipPresets: true }); });
@@ -263,7 +303,7 @@
       actions.appendChild(clearRef);
       body.appendChild(materialSection);
       body.appendChild(dimensionSection);
-      if (styleSection) body.appendChild(styleSection);
+      body.appendChild(styleSection);
       body.appendChild(promptSection);
       body.appendChild(referenceField);
       body.appendChild(actions);

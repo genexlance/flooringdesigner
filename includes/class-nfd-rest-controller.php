@@ -167,8 +167,18 @@ class NFD_REST_Controller extends WP_REST_Controller
         }
         $width = (int) ($info[0] ?? 0);
         $height = (int) ($info[1] ?? 0);
-        if ($width < 800 || $height < 600) {
-            return new WP_Error('nfd_room_dimensions', __('Room image must be at least 800x600.', 'nano-floor-designer'));
+        $meets_primary = ($width >= 800 && $height >= 600);
+        $meets_rotated = ($width >= 600 && $height >= 800);
+        if (!$meets_primary && !$meets_rotated) {
+            return new WP_Error(
+                'nfd_room_dimensions',
+                sprintf(
+                    /* translators: 1: detected image width, 2: detected image height */
+                    __('Room image must be at least 800px on the longer side and 600px on the shorter side. Detected size: %1$dx%2$d.', 'nano-floor-designer'),
+                    $width,
+                    $height
+                )
+            );
         }
         if ($width > 4000 || $height > 4000) {
             return new WP_Error('nfd_room_dimensions_max', __('Room image must be 4000px or smaller on each edge.', 'nano-floor-designer'));
