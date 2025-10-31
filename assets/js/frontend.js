@@ -1,6 +1,9 @@
 (function(){
   if (typeof window === 'undefined') return;
   const config = window.nfdFrontendConfig || {};
+  const cssSupports = typeof window !== 'undefined' && window.CSS && typeof window.CSS.supports === 'function';
+  const supportsClipPath = cssSupports && (window.CSS.supports('clip-path', 'inset(0 50% 0 0)') || window.CSS.supports('-webkit-clip-path', 'inset(0 50% 0 0)'));
+  const supportsAspectRatio = cssSupports && window.CSS.supports('aspect-ratio', '1 / 1');
   function createEl(tag, attrs = {}, children = []) {
     const el = document.createElement(tag);
     Object.entries(attrs).forEach(([key, value]) => {
@@ -65,6 +68,41 @@
       customIsOpen: !config.presets || !config.presets.length
     };
     const elements = {};
+    let currentAspectRatio=null;
+    let fallbackResizeBound=false;
+    function updateFallbackHeight(){
+      if(supportsAspectRatio)return;
+      if(!elements.beforeAfter||!currentAspectRatio){return;}
+      const width=elements.beforeAfter.clientWidth;
+      if(!width)return;
+      elements.beforeAfter.style.height=(width/currentAspectRatio)+'px';
+    }
+    function applyAspectFromImage(img){
+      if(!img||!elements.beforeAfter)return;
+      const naturalWidth=img.naturalWidth;
+      const naturalHeight=img.naturalHeight;
+      if(!naturalWidth||!naturalHeight)return;
+      currentAspectRatio=naturalWidth/naturalHeight;
+      const aspectValue=naturalWidth+' / '+naturalHeight;
+      elements.beforeAfter.style.setProperty('--nfd-aspect-ratio',aspectValue);
+      if(supportsAspectRatio){
+        elements.beforeAfter.style.removeProperty('height');
+      }else{
+        updateFallbackHeight();
+      }
+    }
+    function resetAspectRatio(){
+      currentAspectRatio=null;
+      if(!elements.beforeAfter)return;
+      elements.beforeAfter.style.removeProperty('--nfd-aspect-ratio');
+      if(!supportsAspectRatio){
+        elements.beforeAfter.style.removeProperty('height');
+      }
+    }
+    if(!supportsAspectRatio&&!fallbackResizeBound){
+      fallbackResizeBound=true;
+      window.addEventListener('resize',updateFallbackHeight);
+    }
     function sliderHasResult(){return Boolean(state.processedImage||state.processedUrl);}
     function normalizeSliderValue(value){
       const numeric = typeof value === 'number'?value:parseFloat(value);
@@ -92,7 +130,18 @@
       }
       if(elements.afterWrapper){
         const appliedValue=hasResult?state.sliderValue:0;
-        elements.afterWrapper.style.width=appliedValue+'%';
+        const clampedReveal=Math.max(0,Math.min(100,appliedValue));
+        const sliderPercent=clampedReveal.toFixed(3).replace(/\.?0+$/,'')+'%';
+        if(elements.beforeAfter){
+          elements.beforeAfter.style.setProperty('--nfd-slider',sliderPercent);
+        }
+        elements.afterWrapper.style.setProperty('--nfd-slider',sliderPercent);
+        elements.afterWrapper.style.visibility=hasResult?'visible':'hidden';
+        if(supportsClipPath){
+          elements.afterWrapper.style.removeProperty('width');
+        }else{
+          elements.afterWrapper.style.width=sliderPercent;
+        }
       }
       if(elements.sliderIndicator){
         const indicatorPosition=hasResult?state.sliderValue:50;
@@ -418,16 +467,29 @@
       if (state.roomPreview) {
         beforeImg.src = state.roomPreview;
         beforeImg.alt = 'Uploaded room image';
+        if(beforeImg.complete&&beforeImg.naturalWidth){applyAspectFromImage(beforeImg);}
+      } else {
+        beforeImg.removeAttribute('src');
+        beforeImg.alt = '';
+        resetAspectRatio();
       }
       const hasResult = sliderHasResult();
       if (hasResult) {
-        const processedSrc = state.processedImage || state.processedUrl;
+        const processedSrc = state.processedUrl || state.processedImage;
         if (processedSrc) {
-          afterImg.src = processedSrc;
+          const currentSrc = afterImg.getAttribute('src');
+          if (currentSrc !== processedSrc) {
+            afterImg.src = processedSrc;
+          }
+          afterImg.style.visibility = 'visible';
+        } else {
+          afterImg.removeAttribute('src');
+          afterImg.style.visibility = 'hidden';
         }
         afterImg.alt = 'Processed flooring image';
       } else {
         afterImg.removeAttribute('src');
+        afterImg.style.visibility = 'hidden';
         afterImg.alt = '';
         releaseSliderPointerCapture(undefined,{skipSync:true});
       }
@@ -490,9 +552,10 @@
             wrapper.addEventListener('pointercancel', handleSliderPointerUp);
             wrapper.addEventListener('pointerleave', handleSliderPointerUp);
             const before = createEl('img', { class: 'nfd-image-before', alt: '' });
+            before.addEventListener('load',()=>{applyAspectFromImage(before);});
             const afterWrap = createEl('div', { class: 'nfd-after-wrap' });
             const after = createEl('img', { class: 'nfd-image-after', alt: '' });
-            const indicator = createEl('div', { class: 'nfd-slider-indicator', ariaHidden: 'true' });
+            const indicator = createEl('div', { class: 'nfd-slider-handle', ariaHidden: 'true' }, createEl('div', { class: 'nfd-slider-handle-line' }));
             const slider = createEl('input', { type: 'range', min: 0, max: 100, step: 0.1, value: state.sliderValue, class: 'nfd-slider', disabled: true, ariaLabel: 'Adjust flooring overlay' });
             slider.addEventListener('input', () => {
               setSliderValue(slider.value);
@@ -572,16 +635,22 @@
         if (!res.ok) {
           throw new Error(data && data.message ? data.message : config.strings.errorGeneric);
         }
+        const rawBase64 = typeof data.processed_base64 === 'string' ? data.processed_base64.trim() : '';
+        const normalizedBase64 = rawBase64 ? (rawBase64.startsWith('data:') ? rawBase64 : 'data:image/png;base64,' + rawBase64) : '';
+        const processedUrl = typeof data.processed_url === 'string' ? data.processed_url : '';
         setState({
-          processedImage: data.processed_base64 || '',
-          processedUrl: data.processed_url || '',
+          processedImage: normalizedBase64,
+          processedUrl,
           loading: false,
           error: ''
         });
-        if (data.processed_base64) {
-          elements.downloadBtn.href = data.processed_base64;
-        } else if (data.processed_url) {
-          elements.downloadBtn.href = data.processed_url;
+        if (elements.downloadBtn) {
+          const downloadHref = processedUrl || normalizedBase64;
+          if (downloadHref) {
+            elements.downloadBtn.href = downloadHref;
+          } else {
+            elements.downloadBtn.removeAttribute('href');
+          }
         }
       } catch (err) {
         setState({ loading: false, error: err.message || config.strings.errorGeneric });
