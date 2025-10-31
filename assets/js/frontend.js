@@ -51,6 +51,8 @@
       processedImage: '',
       processedUrl: '',
       sliderValue: 50,
+      sliderDragActive: false,
+      sliderDragPointerId: null,
       custom: {
         materialId: '',
         materialName: '',
@@ -63,10 +65,95 @@
       customIsOpen: !config.presets || !config.presets.length
     };
     const elements = {};
+    function sliderHasResult(){return Boolean(state.processedImage||state.processedUrl);}
+    function normalizeSliderValue(value){
+      const numeric = typeof value === 'number'?value:parseFloat(value);
+      if (!Number.isFinite(numeric)) return state.sliderValue;
+      const clamped = Math.max(0, Math.min(100, numeric));
+      return Math.round(clamped*1000)/1000;
+    }
+    function releaseSliderPointerCapture(pointerId,options={}){
+      const wrapper = elements.beforeAfter;
+      if (pointerId!==undefined&&pointerId!==null&&state.sliderDragPointerId!==null&&pointerId!==state.sliderDragPointerId){return;}
+      if (wrapper&&state.sliderDragPointerId!==null&&typeof wrapper.releasePointerCapture==='function'){
+        try{wrapper.releasePointerCapture(state.sliderDragPointerId);}catch(error){}
+      }
+      state.sliderDragPointerId=null;
+      state.sliderDragActive=false;
+      if(!options.skipSync){syncSliderUI();}
+    }
+    function syncSliderUI(options={}){
+      const hasResult=Object.prototype.hasOwnProperty.call(options,'hasResult')?options.hasResult:sliderHasResult();
+      const slider=elements.slider;
+      if(slider){
+        const sanitized=(Math.round(state.sliderValue*1000)/1000).toString();
+        if(slider.value!==sanitized){slider.value=sanitized;}
+        slider.disabled=!hasResult;
+      }
+      if(elements.afterWrapper){
+        const appliedValue=hasResult?state.sliderValue:0;
+        elements.afterWrapper.style.width=appliedValue+'%';
+      }
+      if(elements.sliderIndicator){
+        const indicatorPosition=hasResult?state.sliderValue:50;
+        elements.sliderIndicator.style.left=indicatorPosition+'%';
+      }
+      if(elements.beforeAfter){
+        elements.beforeAfter.classList.toggle('nfd-before-after--ready',hasResult);
+        elements.beforeAfter.classList.toggle('nfd-before-after--dragging',state.sliderDragActive&&hasResult);
+      }
+    }
+    function setSliderValue(value,options={}){
+      const next=normalizeSliderValue(value);
+      if(!options.force&&Math.abs(next-state.sliderValue)<0.001)return state.sliderValue;
+      state.sliderValue=next;
+      syncSliderUI();
+      return state.sliderValue;
+    }
+    function updateSliderFromPointer(event){
+      if(!elements.beforeAfter)return;
+      const rect=elements.beforeAfter.getBoundingClientRect();
+      if(!rect.width)return;
+      const raw=((event.clientX-rect.left)/rect.width)*100;
+      setSliderValue(raw,{force:true});
+    }
+    function handleSliderPointerDown(event){
+      if(!sliderHasResult())return;
+      if(!event.isPrimary)return;
+      if(event.pointerType==='mouse'&&event.button!==0)return;
+      event.preventDefault();
+      const wrapper=elements.beforeAfter;
+      if(!wrapper)return;
+      state.sliderDragActive=true;
+      state.sliderDragPointerId=event.pointerId;
+      if(typeof wrapper.setPointerCapture==='function'){
+        try{wrapper.setPointerCapture(event.pointerId);}catch(error){}
+      }
+      if(elements.slider&&typeof elements.slider.focus==='function'){
+        try{elements.slider.focus({preventScroll:true});}catch(error){}
+      }
+      updateSliderFromPointer(event);
+      syncSliderUI();
+    }
+    function handleSliderPointerMove(event){
+      if(!state.sliderDragActive)return;
+      if(state.sliderDragPointerId!==event.pointerId)return;
+      event.preventDefault();
+      updateSliderFromPointer(event);
+    }
+    function handleSliderPointerUp(event){
+      if(state.sliderDragPointerId===null)return;
+      if(event.pointerId!==state.sliderDragPointerId)return;
+      event.preventDefault();
+      releaseSliderPointerCapture(event.pointerId);
+    }
     function setState(patch, renderOptions = {}){Object.assign(state,patch);render(renderOptions);}
     function updateCustom(patch, renderOptions = {}){setState({custom:Object.assign({},state.custom,patch)}, renderOptions);}
     function findMaterial(id){return id?state.materials.find(material=>material.id===id)||null:null;}
-    function resetProcessing(){setState({processedImage:'',processedUrl:'',sliderValue:50});}
+    function resetProcessing(){
+      releaseSliderPointerCapture();
+      setState({processedImage:'',processedUrl:'',sliderValue:50});
+    }
     function onRoomChange(event){
       const file = event.target.files[0];
       if (!file) return;
@@ -328,22 +415,23 @@
     function renderPreviews(){
       const beforeImg = elements.beforeImage;
       const afterImg = elements.afterImage;
-      const slider = elements.slider;
-      const afterWrapper = elements.afterWrapper;
       if (state.roomPreview) {
         beforeImg.src = state.roomPreview;
         beforeImg.alt = 'Uploaded room image';
       }
-      if (state.processedImage || state.processedUrl) {
-        afterImg.src = state.processedImage || state.processedUrl;
+      const hasResult = sliderHasResult();
+      if (hasResult) {
+        const processedSrc = state.processedImage || state.processedUrl;
+        if (processedSrc) {
+          afterImg.src = processedSrc;
+        }
         afterImg.alt = 'Processed flooring image';
-        afterWrapper.style.width = state.sliderValue + '%';
-        slider.disabled = false;
       } else {
         afterImg.removeAttribute('src');
-        afterWrapper.style.width = '0%';
-        slider.disabled = true;
+        afterImg.alt = '';
+        releaseSliderPointerCapture(undefined,{skipSync:true});
       }
+      syncSliderUI({hasResult});
     }
     function renderReferencePreview(){
       if (!elements.referencePreview) return;
@@ -396,21 +484,29 @@
         createEl('div', { class: 'nfd-result' }, [
           (() => {
             const wrapper = createEl('div', { class: 'nfd-before-after' });
+            wrapper.addEventListener('pointerdown', handleSliderPointerDown);
+            wrapper.addEventListener('pointermove', handleSliderPointerMove);
+            wrapper.addEventListener('pointerup', handleSliderPointerUp);
+            wrapper.addEventListener('pointercancel', handleSliderPointerUp);
+            wrapper.addEventListener('pointerleave', handleSliderPointerUp);
             const before = createEl('img', { class: 'nfd-image-before', alt: '' });
             const afterWrap = createEl('div', { class: 'nfd-after-wrap' });
             const after = createEl('img', { class: 'nfd-image-after', alt: '' });
-            const slider = createEl('input', { type: 'range', min: 0, max: 100, value: state.sliderValue, class: 'nfd-slider', disabled: true });
+            const indicator = createEl('div', { class: 'nfd-slider-indicator', ariaHidden: 'true' });
+            const slider = createEl('input', { type: 'range', min: 0, max: 100, step: 0.1, value: state.sliderValue, class: 'nfd-slider', disabled: true, ariaLabel: 'Adjust flooring overlay' });
             slider.addEventListener('input', () => {
-              state.sliderValue = parseInt(slider.value, 10);
-              renderPreviews();
+              setSliderValue(slider.value);
             });
             elements.beforeImage = before;
             elements.afterImage = after;
             elements.afterWrapper = afterWrap;
+            elements.beforeAfter = wrapper;
+            elements.sliderIndicator = indicator;
             elements.slider = slider;
             afterWrap.appendChild(after);
             wrapper.appendChild(before);
             wrapper.appendChild(afterWrap);
+            wrapper.appendChild(indicator);
             wrapper.appendChild(slider);
             return wrapper;
           })(),
